@@ -1,71 +1,88 @@
-import { Page, expect } from '@playwright/test';
+import { Locator, Page, expect } from '@playwright/test';
 
 export class ContactUsPage {
   readonly page: Page;
-
-  // Locators
-  private contactUsTitle = 'h1.content-page-heading1'; // adjust selector if different
-  private subjectDropdown = 'select#subject'; // update with correct selector
-  private descriptionField = 'textarea#description'; // update with correct selector
-  private nameField = 'input#name'; // update with correct selector
-  private emailField = 'input#email'; // update with correct selector
-  private captchaField = 'input#captcha'; // update with correct selector
-  private projectLinkField = 'input#projectLink'; // optional
-  private submitButton = 'button[type="submit"]';
-  private successMessage = '.success-message'; // adjust as per DOM
-  private errorMessage = '.error-message'; // adjust as per DOM
+  readonly contactTitle: Locator;
+  readonly inquiryTypeDropdown: Locator;
+  readonly subjectField: Locator;
+  readonly descriptionField: Locator;
+  readonly nameField: Locator;
+  readonly emailField: Locator;
+  readonly extraLinkField: Locator;
+  readonly captchaField: Locator;
+  readonly submitButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.contactTitle = page.locator('//h3[normalize-space()="Let\'s Get In Touch"]');
+    this.inquiryTypeDropdown = page.locator('#contactInquiryType');
+    this.subjectField = page.locator('#contactInquirySubject');
+    this.descriptionField = page.locator('#contactInquiryDescription');
+    this.nameField = page.locator('#contactName');
+    this.emailField = page.locator('#contactEmail');
+    this.extraLinkField = page.locator('#contactExtraLink');
+    this.captchaField = page.locator('#user_captcha_input');
+    this.submitButton = page.locator('button[type="submit"]'); // 🔹 update if different
   }
 
   async goto() {
-    await this.page.goto('/contact-us'); // update route if needed
+    await this.page.goto('/contact'); // 🔹 update with actual route
   }
 
   async verifyContactUsTitle() {
-    await expect(this.page.locator(this.contactUsTitle)).toHaveText(
-      "We Are Here To Help! To Get Started, Please Select The Type Of Issue You'd Like To Contact Us About."
-    );
+    await expect(this.contactTitle).toHaveText("Let's Get In Touch");
   }
 
-  async submitEmptyForm() {
-    await this.page.click(this.submitButton);
+  async selectInquiryType(option: string) {
+    await this.inquiryTypeDropdown.click();
+    await this.page.locator('.react-select__option', { hasText: option }).click();
   }
 
-  async verifyRequiredFieldValidation() {
-    await expect(this.page.locator(this.errorMessage)).toContainText('This field is required');
+  async fillForm(
+    inquiryType: string,
+    subject: string,
+    description: string,
+    name: string,
+    email: string,
+    captcha: string,
+    extraLink?: string
+  ) {
+    if (inquiryType) await this.selectInquiryType(inquiryType);
+    if (subject) await this.subjectField.fill(subject);
+    if (description) await this.descriptionField.fill(description);
+    if (name) await this.nameField.fill(name);
+    if (email) await this.emailField.fill(email);
+    if (extraLink) await this.extraLinkField.fill(extraLink);
+    if (captcha) await this.captchaField.fill(captcha);
   }
 
-  async fillContactForm(data: {
-    subject?: string;
-    description?: string;
-    name?: string;
-    email?: string;
-    captcha?: string;
-    projectLink?: string;
-  }) {
-    if (data.subject) await this.page.selectOption(this.subjectDropdown, { label: data.subject });
-    if (data.description) await this.page.fill(this.descriptionField, data.description);
-    if (data.name) await this.page.fill(this.nameField, data.name);
-    if (data.email) await this.page.fill(this.emailField, data.email);
-    if (data.captcha) await this.page.fill(this.captchaField, data.captcha);
-    if (data.projectLink) await this.page.fill(this.projectLinkField, data.projectLink);
+  async submit() {
+    await this.submitButton.click();
   }
 
-  async submitForm() {
-    await this.page.click(this.submitButton);
+  async submitForm(
+    inquiryType: string,
+    subject: string,
+    description: string,
+    name: string,
+    email: string,
+    captcha: string,
+    extraLink?: string
+  ) {
+    await this.fillForm(inquiryType, subject, description, name, email, captcha, extraLink);
+    await this.submit();
   }
 
-  async verifyInvalidEmailValidation() {
-    await expect(this.page.locator(this.errorMessage)).toContainText('Enter a valid email address');
+  async verifyValidationMessages() {
+    await expect(this.page.locator('text=Inquiry type is required')).toBeVisible();
+    await expect(this.page.locator('text=Subject is required')).toBeVisible();
+    await expect(this.page.locator('text=Description is required')).toBeVisible();
+    await expect(this.page.locator('text=Name is required')).toBeVisible();
+    await expect(this.page.locator('text=Email is required')).toBeVisible();
+    await expect(this.page.locator('text=Captcha is required')).toBeVisible();
   }
 
-  async verifyCaptchaValidation() {
-    await expect(this.page.locator(this.errorMessage)).toContainText('Invalid captcha');
-  }
-
-  async verifyFormSubmissionSuccess() {
-    await expect(this.page.locator(this.successMessage)).toHaveText('Your request has been submitted successfully');
+  async verifyInvalidEmailError() {
+    await expect(this.page.locator('text=Please enter a valid email')).toBeVisible();
   }
 }
